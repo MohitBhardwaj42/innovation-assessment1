@@ -1,7 +1,21 @@
 import { useState } from "react";
 import "./App.css";
 
-const framework = [
+/* ---------------- TYPES ---------------- */
+
+type Pillar = "Strategy" | "Capacity" | "Discipline" | "Performance";
+
+type FrameworkSection = {
+  pillar: Pillar;
+  questions: string[];
+};
+
+type Responses = Record<string, number>;
+type Scores = Record<Pillar, number>;
+
+/* ---------------- DATA ---------------- */
+
+const framework: FrameworkSection[] = [
   {
     pillar: "Strategy",
     questions: [
@@ -47,7 +61,10 @@ const framework = [
     ],
   },
 ];
-const getRecommendation = (pillar, score) => {
+
+/* ---------------- LOGIC ---------------- */
+
+const getRecommendation = (pillar: Pillar, score: number): string => {
   if (score <= 3) {
     switch (pillar) {
       case "Strategy":
@@ -58,8 +75,6 @@ const getRecommendation = (pillar, score) => {
         return "Innovation discipline is weak. Improve leadership ownership, experimentation, and simple performance tracking.";
       case "Performance":
         return "Innovation performance is low. Focus on solving real problems and delivering small, measurable wins.";
-      default:
-        return "";
     }
   }
 
@@ -73,8 +88,6 @@ const getRecommendation = (pillar, score) => {
         return "Innovation discipline exists but lacks consistency. Strengthen accountability, leadership behaviors, and metrics.";
       case "Performance":
         return "Innovation performance is moderate. Improve value realization and scale successful initiatives.";
-      default:
-        return "";
     }
   }
 
@@ -88,8 +101,6 @@ const getRecommendation = (pillar, score) => {
         return "Your innovation discipline is solid. Reinforce metrics, leadership practices, and a learning culture.";
       case "Performance":
         return "Your innovation performance is strong. Focus on sustained value creation and improved value capture.";
-      default:
-        return "";
     }
   }
 
@@ -102,30 +113,34 @@ const getRecommendation = (pillar, score) => {
       return "Excellent innovation discipline. Your leadership, culture, and metrics strongly support sustained innovation.";
     case "Performance":
       return "Excellent innovation performance. You consistently create and capture value and effectively leverage AI.";
-    default:
-      return "";
   }
 };
-const getMaturityLevel = (score) => {
+
+const getMaturityLevel = (score: number): string => {
   if (score <= 3) return "Early Stage";
   if (score <= 6) return "Developing";
   if (score <= 8) return "Advanced";
   return "Leading";
 };
 
-export default function App() {
-  const [step, setStep] = useState(1);
-  const [responses, setResponses] = useState({});
+/* ---------------- APP ---------------- */
 
-  const calculateScores = () => {
-    const scores = {};
+export default function App() {
+  const [step, setStep] = useState<number>(1);
+  const [responses, setResponses] = useState<Responses>({});
+
+  const calculateScores = (): Scores => {
+    const scores = {} as Scores;
+
     framework.forEach((section) => {
       const values = section.questions.map(
-        (_, i) => responses[`${section.pillar}-${i}`] || 0
+        (_, i) => responses[`${section.pillar}-${i}`] ?? 0
       );
+
       scores[section.pillar] =
         values.reduce((a, b) => a + b, 0) / values.length;
     });
+
     return scores;
   };
 
@@ -136,7 +151,6 @@ export default function App() {
       <div className="card">
         <h1 className="title">Innovation Assessment Survey</h1>
 
-        {/* SECTION 1 */}
         {step === 1 && (
           <>
             <h2>Section 1: Profile & Context</h2>
@@ -150,7 +164,6 @@ export default function App() {
           </>
         )}
 
-        {/* SECTION 2 */}
         {step === 2 && (
           <>
             <h2>Section 2: Individual Assessment</h2>
@@ -162,6 +175,7 @@ export default function App() {
                 {section.questions.map((q, i) => (
                   <div key={i} className="question">
                     <p>{q}</p>
+
                     <div className="options">
                       {[0, 2, 4, 6, 8, 10].map((val) => (
                         <label key={val}>
@@ -169,10 +183,10 @@ export default function App() {
                             type="radio"
                             name={`${section.pillar}-${i}`}
                             onChange={() =>
-                              setResponses({
-                                ...responses,
+                              setResponses((prev) => ({
+                                ...prev,
                                 [`${section.pillar}-${i}`]: val,
-                              })
+                              }))
                             }
                           />
                           {val}
@@ -190,7 +204,6 @@ export default function App() {
           </>
         )}
 
-        {/* SECTION 3 */}
         {step === 3 && (
           <>
             <h2>Section 3: Personalized Recommendations</h2>
@@ -201,7 +214,7 @@ export default function App() {
                   {pillar} — {score.toFixed(1)} / 10 (
                   {getMaturityLevel(score)})
                 </h3>
-                <p>{getRecommendation(pillar, score)}</p>
+                <p>{getRecommendation(pillar as Pillar, score)}</p>
               </div>
             ))}
 
