@@ -13,7 +13,16 @@ type FrameworkSection = {
 type Responses = Record<string, number>;
 type Scores = Record<Pillar, number>;
 
-/* ---------------- DATA ---------------- */
+/* ---------------- OPTIONS ---------------- */
+
+const options = [
+  { label: "Not at all", value: 2 },
+  { label: "To some extent", value: 5 },
+  { label: "To a moderate extent", value: 7 },
+  { label: "To a great extent", value: 9 },
+];
+
+/* ---------------- FRAMEWORK ---------------- */
 
 const framework: FrameworkSection[] = [
   {
@@ -62,58 +71,39 @@ const framework: FrameworkSection[] = [
   },
 ];
 
-/* ---------------- LOGIC ---------------- */
+/* ---------------- HELPERS ---------------- */
 
 const getRecommendation = (pillar: Pillar, score: number): string => {
-  if (score <= 3) {
-    switch (pillar) {
-      case "Strategy":
-        return "Your innovation strategy is unclear. Focus on defining innovation intent, identifying priority areas, and aligning innovation with long-term goals.";
-      case "Capacity":
-        return "Your innovation capacity is limited. Strengthen basic processes, invest in skills, and build collaboration.";
-      case "Discipline":
-        return "Innovation discipline is weak. Improve leadership ownership, experimentation, and simple performance tracking.";
-      case "Performance":
-        return "Innovation performance is low. Focus on solving real problems and delivering small, measurable wins.";
-    }
-  }
+  if (score <= 3)
+    return {
+      Strategy: "Your innovation strategy is unclear.",
+      Capacity: "Your innovation capacity is limited.",
+      Discipline: "Innovation discipline is weak.",
+      Performance: "Innovation performance is low.",
+    }[pillar];
 
-  if (score <= 6) {
-    switch (pillar) {
-      case "Strategy":
-        return "You have a developing innovation strategy. Improve focus area prioritization and strengthen portfolio balance.";
-      case "Capacity":
-        return "Your innovation capacity is moderate. Enhance collaboration, execution discipline, and resource utilization.";
-      case "Discipline":
-        return "Innovation discipline exists but lacks consistency. Strengthen accountability, leadership behaviors, and metrics.";
-      case "Performance":
-        return "Innovation performance is moderate. Improve value realization and scale successful initiatives.";
-    }
-  }
+  if (score <= 6)
+    return {
+      Strategy: "Your innovation strategy is developing.",
+      Capacity: "Your innovation capacity is moderate.",
+      Discipline: "Innovation discipline exists.",
+      Performance: "Innovation performance is moderate.",
+    }[pillar];
 
-  if (score <= 8) {
-    switch (pillar) {
-      case "Strategy":
-        return "Your innovation strategy is strong. Continue refining focus areas and actively managing your innovation portfolio.";
-      case "Capacity":
-        return "You have good innovation capacity. Optimize processes, deepen partnerships, and invest in advanced tools.";
-      case "Discipline":
-        return "Your innovation discipline is solid. Reinforce metrics, leadership practices, and a learning culture.";
-      case "Performance":
-        return "Your innovation performance is strong. Focus on sustained value creation and improved value capture.";
-    }
-  }
+  if (score <= 8)
+    return {
+      Strategy: "Your innovation strategy is strong.",
+      Capacity: "You have good innovation capacity.",
+      Discipline: "Your innovation discipline is solid.",
+      Performance: "Your innovation performance is strong.",
+    }[pillar];
 
-  switch (pillar) {
-    case "Strategy":
-      return "Excellent innovation strategy. You demonstrate clear intent, strong focus, and a well-balanced portfolio.";
-    case "Capacity":
-      return "Excellent innovation capacity. You effectively leverage processes, people, and resources to execute innovation.";
-    case "Discipline":
-      return "Excellent innovation discipline. Your leadership, culture, and metrics strongly support sustained innovation.";
-    case "Performance":
-      return "Excellent innovation performance. You consistently create and capture value and effectively leverage AI.";
-  }
+  return {
+    Strategy: "Excellent innovation strategy.",
+    Capacity: "Excellent innovation capacity.",
+    Discipline: "Excellent innovation discipline.",
+    Performance: "Excellent innovation performance.",
+  }[pillar];
 };
 
 const getMaturityLevel = (score: number): string => {
@@ -123,107 +113,288 @@ const getMaturityLevel = (score: number): string => {
   return "Leading";
 };
 
-/* ---------------- APP ---------------- */
+/* ---------------- DASHBOARD ---------------- */
+
+const AssessmentDashboard = ({
+  step,
+  pillarIndex,
+  responses,
+  form,
+}: {
+  step: number;
+  pillarIndex: number;
+  responses: Responses;
+  form: Record<string, string>;
+}) => {
+  // Calculate total questions in all pillars
+  const totalQuestions = framework.reduce(
+    (acc, section) => acc + section.questions.length,
+    0
+  );
+
+  // Count answered questions
+  const answeredQuestions = Object.keys(responses).length;
+
+  // Step 1 fields
+  const orgFields = Object.values(form).filter((v) => v.trim() !== "").length;
+  const totalOrgFields = Object.keys(form).length;
+
+  // Total progress: step1 + step2 answered questions
+  let progress =
+    step === 1
+      ? (orgFields / totalOrgFields) * 100
+      : (answeredQuestions / totalQuestions) * 100;
+
+  return (
+    <div className="dashboard">
+      <h3>Assessment Overview</h3>
+
+      {framework.map((section, index) => (
+        <div key={section.pillar} className="dashboard-section">
+          <strong
+            style={{
+              color:
+                step === 2 && pillarIndex === index
+                  ? "#4f46e5"
+                  : "#333",
+            }}
+          >
+            {section.pillar}
+          </strong>
+          <span className="count">({section.questions.length})</span>
+        </div>
+      ))}
+
+      <div className="step-indicator">
+        {step === 1 && "Organisation Info"}
+        {step === 2 && framework[pillarIndex].pillar}
+        {step === 3 && "Results"}
+      </div>
+
+      {/* PROGRESS BAR */}
+      <div className="progress-container">
+        <div className="progress-bar" style={{ width: `${progress}%` }} />
+      </div>
+      <div className="progress-label">{progress.toFixed(0)}% Completed</div>
+    </div>
+  );
+};
+
+/* ---------------- MAIN APP ---------------- */
 
 export default function App() {
-  const [step, setStep] = useState<number>(1);
+  const [step, setStep] = useState(1);
+  const [pillarIndex, setPillarIndex] = useState(0);
   const [responses, setResponses] = useState<Responses>({});
+  const [notes, setNotes] = useState<Record<Pillar, string>>({
+    Strategy: "",
+    Capacity: "",
+    Discipline: "",
+    Performance: "",
+  });
+  const [error, setError] = useState("");
+
+  const [form, setForm] = useState({
+    Organisation: "",
+    Email: "",
+    ExperienceYears: "",
+    Innovation: "",
+    EmployeesNo: "",
+    Location: "",
+    Notes: "",
+  });
+
+  const validateStep1 = () => {
+    if (Object.values(form).some((v) => v.trim() === "")) {
+      setError("All fields are required.");
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.Email)) {
+      setError("Please enter a valid email address.");
+      return false;
+    }
+    setError("");
+    return true;
+  };
 
   const calculateScores = (): Scores => {
     const scores = {} as Scores;
-
     framework.forEach((section) => {
       const values = section.questions.map(
         (_, i) => responses[`${section.pillar}-${i}`] ?? 0
       );
-
       scores[section.pillar] =
         values.reduce((a, b) => a + b, 0) / values.length;
     });
-
     return scores;
   };
 
   const scores = calculateScores();
+  const currentSection = framework[pillarIndex];
 
   return (
     <div className="app-container">
-      <div className="card">
-        <h1 className="title">Innovation Assessment Survey</h1>
+      <div className="layout">
+        <AssessmentDashboard
+          step={step}
+          pillarIndex={pillarIndex}
+          responses={responses}
+          form={form}
+        />
 
-        {step === 1 && (
-          <>
-            <h2>Section 1: Profile & Context</h2>
-            <input className="input" placeholder="Organization Name" />
-            <input className="input" placeholder="Industry" />
-            <input className="input" placeholder="Role / Designation" />
+        <div className="card">
+          <h1 className="title">Innovation Assessment Survey</h1>
 
-            <button className="primary-btn" onClick={() => setStep(2)}>
-              Continue to Assessment
-            </button>
-          </>
-        )}
+          {/* STEP 1 */}
+          {step === 1 && (
+            <>
+              <h2>Organisation Information</h2>
+              {Object.keys(form).map((key) => (
+                <input
+                  key={key}
+                  className="input"
+                  placeholder={key}
+                  value={form[key as keyof typeof form]}
+                  onChange={(e) =>
+                    setForm({ ...form, [key]: e.target.value })
+                  }
+                />
+              ))}
+              {error && <p className="error-text">{error}</p>}
+              <button
+                className="primary-btn"
+                onClick={() => {
+                  if (validateStep1()) {
+                    setPillarIndex(0);
+                    setStep(2);
+                  }
+                }}
+              >
+                Continue
+              </button>
+            </>
+          )}
 
-        {step === 2 && (
-          <>
-            <h2>Section 2: Individual Assessment</h2>
+          {/* STEP 2 */}
+          {step === 2 && (
+            <>
+              <h2>{currentSection.pillar} Assessment</h2>
 
-            {framework.map((section) => (
-              <div key={section.pillar} className="section-box">
-                <h3>{section.pillar}</h3>
+              {/* USER EDITABLE NOTES */}
+              <div className="info-note">
+                <label className="note-label">Notes (optional)</label>
+                <textarea
+                  className="note-textarea"
+                  placeholder={`Add your notes for ${currentSection.pillar}...`}
+                  value={notes[currentSection.pillar]}
+                  onChange={(e) =>
+                    setNotes({
+                      ...notes,
+                      [currentSection.pillar]: e.target.value,
+                    })
+                  }
+                />
+              </div>
 
-                {section.questions.map((q, i) => (
+              <div className="section-box">
+                {currentSection.questions.map((q, i) => (
                   <div key={i} className="question">
                     <p>{q}</p>
-
-                    <div className="options">
-                      {[0, 2, 4, 6, 8, 10].map((val) => (
-                        <label key={val}>
+                    <div className="radio-group">
+                      {options.map((opt) => (
+                        <label key={opt.value} className="radio-option">
                           <input
                             type="radio"
-                            name={`${section.pillar}-${i}`}
+                            name={`${currentSection.pillar}-${i}`}
+                            checked={
+                              responses[
+                                `${currentSection.pillar}-${i}`
+                              ] === opt.value
+                            }
                             onChange={() =>
-                              setResponses((prev) => ({
-                                ...prev,
-                                [`${section.pillar}-${i}`]: val,
-                              }))
+                              setResponses({
+                                ...responses,
+                                [`${currentSection.pillar}-${i}`]:
+                                  opt.value,
+                              })
                             }
                           />
-                          {val}
+                          {opt.label}
                         </label>
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
-            ))}
 
-            <button className="primary-btn" onClick={() => setStep(3)}>
-              View Results
-            </button>
-          </>
-        )}
-
-        {step === 3 && (
-          <>
-            <h2>Section 3: Personalized Recommendations</h2>
-
-            {Object.entries(scores).map(([pillar, score]) => (
-              <div key={pillar} className="section-box">
-                <h3>
-                  {pillar} — {score.toFixed(1)} / 10 (
-                  {getMaturityLevel(score)})
-                </h3>
-                <p>{getRecommendation(pillar as Pillar, score)}</p>
+              <div style={{ display: "flex", gap: "12px" }}>
+                {pillarIndex > 0 && (
+                  <button
+                    className="secondary-btn"
+                    onClick={() => setPillarIndex(pillarIndex - 1)}
+                  >
+                    Previous
+                  </button>
+                )}
+                {pillarIndex < framework.length - 1 ? (
+                  <button
+                    className="primary-btn"
+                    onClick={() => setPillarIndex(pillarIndex + 1)}
+                  >
+                    Next
+                  </button>
+                ) : (
+                  <button
+                    className="primary-btn"
+                    onClick={() => setStep(3)}
+                  >
+                    View Results
+                  </button>
+                )}
               </div>
-            ))}
+            </>
+          )}
 
-            <button className="secondary-btn" onClick={() => setStep(1)}>
-              Restart Assessment
-            </button>
-          </>
-        )}
+          {/* STEP 3 */}
+          {step === 3 && (
+            <>
+              <h2>Results</h2>
+              {Object.entries(scores).map(([pillar, score]) => (
+                <div key={pillar} className="section-box">
+                  <h3>
+                    {pillar} — {score.toFixed(1)} ({getMaturityLevel(score)})
+                  </h3>
+                  <p>{getRecommendation(pillar as Pillar, score)}</p>
+                  {notes[pillar as Pillar] && (
+                    <div className="info-note">
+                      <strong>Your Notes:</strong>
+                      <p>{notes[pillar as Pillar]}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <button
+                className="secondary-btn"
+                onClick={() => {
+                  setResponses({});
+                  setNotes({
+                    Strategy: "",
+                    Capacity: "",
+                    Discipline: "",
+                    Performance: "",
+                  });
+                  setPillarIndex(0);
+                  setStep(1);
+                }}
+              >
+                Restart
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
