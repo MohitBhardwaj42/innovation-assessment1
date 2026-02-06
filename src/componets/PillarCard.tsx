@@ -1,9 +1,11 @@
 type Props = {
   pillar: string;
   score: number;
+  maturity:string;
+  recommendation:string;
 };
 
-export default function PillarCard({ pillar, score }: Props) {
+export default function PillarCard({ pillar, score,maturity }: Props) {
   const level =
     score <= 3 ? "Early Stage" :
     score <= 6 ? "Developing" :
@@ -28,7 +30,7 @@ export default function PillarCard({ pillar, score }: Props) {
     >
       <h3>{pillar}</h3>
       <h1 style={{ color }}>{score.toFixed(1)}</h1>
-      <p>{level}</p>
+      <p>{maturity}</p>
     </div>
   );
 }

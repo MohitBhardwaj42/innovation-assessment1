@@ -3,7 +3,7 @@ console.log("Supabase:", supabase);
 
 import { useState } from "react";
 import "./App.css";
-import BarResult from "./componets/BarResult";
+
 import PillarCard from "./componets/PillarCard";
 import InnovationGapGraph from "./componets/InnovationGapGraph";
 
@@ -93,7 +93,7 @@ const getRecommendation = (pillar: Pillar, score: number): string => {
       Capacity: "Your innovation capacity is limited.",
       Discipline: "Innovation discipline is weak.",
       Performance: "Innovation performance is low.",
-    }[pillar];
+    }[pillar]!;
 
   if (score <= 6)
     return {
@@ -101,7 +101,7 @@ const getRecommendation = (pillar: Pillar, score: number): string => {
       Capacity: "Your innovation capacity is moderate.",
       Discipline: "Innovation discipline exists.",
       Performance: "Innovation performance is moderate.",
-    }[pillar];
+    }[pillar]!;
 
   if (score <= 8)
     return {
@@ -109,14 +109,14 @@ const getRecommendation = (pillar: Pillar, score: number): string => {
       Capacity: "You have good innovation capacity.",
       Discipline: "Your innovation discipline is solid.",
       Performance: "Your innovation performance is strong.",
-    }[pillar];
+    }[pillar]!;
 
   return {
     Strategy: "Excellent innovation strategy.",
     Capacity: "Excellent innovation capacity.",
     Discipline: "Excellent innovation discipline.",
     Performance: "Excellent innovation performance.",
-  }[pillar];
+  }[pillar]!;
 };
 
 const getMaturityLevel = (score: number): string => {
@@ -131,11 +131,11 @@ const getMaturityLevel = (score: number): string => {
 const AssessmentDashboard = ({
   step,
   pillarIndex,
-  form,
+  
 }: {
   step: number;
   pillarIndex: number;
-  form: Record<string, string>;
+  
 }) => {
   return (
     <div className="dashboard">
@@ -252,7 +252,7 @@ export default function App() {
       </div>
 
       <div className="layout">
-        <AssessmentDashboard step={step} pillarIndex={pillarIndex} form={form} />
+        <AssessmentDashboard step={step} pillarIndex={pillarIndex} />
 
         <div className="card">
           <h1 className="title">Innovation Assessment Survey</h1>
@@ -395,16 +395,13 @@ export default function App() {
               </div>
 
               <div className="pillar-cards-container">
-                {Object.entries(scores).map(([pillar, score]) => (
+                {(Object.keys(scores) as Pillar[]).map((pillar) => (
                   <PillarCard
                     key={pillar}
-                    pillar={pillar as Pillar}
-                    score={score}
-                    maturity={getMaturityLevel(score)}
-                    recommendation={getRecommendation(
-                      pillar as Pillar,
-                      score
-                    )}
+                    pillar={pillar}
+                    score={scores[pillar]}
+                    maturity={getMaturityLevel(scores[pillar])}
+                    recommendation={getRecommendation(pillar, scores[pillar]) || "Keep up the good work!"}
                   />
                 ))}
               </div>
