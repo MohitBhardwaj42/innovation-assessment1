@@ -1,5 +1,11 @@
+import { supabase } from "./supabaseclient";
+console.log("Supabase:", supabase);
+
 import { useState } from "react";
 import "./App.css";
+import BarResult from "./componets/BarResult";
+import PillarCard from "./componets/PillarCard";
+import InnovationGapGraph from "./componets/InnovationGapGraph";
 
 /* ---------------- TYPES ---------------- */
 
@@ -10,7 +16,14 @@ type FrameworkSection = {
   questions: string[];
 };
 
-type Responses = Record<string, number>;
+type Responses = Record<
+  string,
+  {
+    current?: number;
+    desired?: number;
+  }
+>;
+
 type Scores = Record<Pillar, number>;
 
 /* ---------------- OPTIONS ---------------- */
@@ -118,33 +131,12 @@ const getMaturityLevel = (score: number): string => {
 const AssessmentDashboard = ({
   step,
   pillarIndex,
-  responses,
   form,
 }: {
   step: number;
   pillarIndex: number;
-  responses: Responses;
   form: Record<string, string>;
 }) => {
-  // Calculate total questions in all pillars
-  const totalQuestions = framework.reduce(
-    (acc, section) => acc + section.questions.length,
-    0
-  );
-
-  // Count answered questions
-  const answeredQuestions = Object.keys(responses).length;
-
-  // Step 1 fields
-  const orgFields = Object.values(form).filter((v) => v.trim() !== "").length;
-  const totalOrgFields = Object.keys(form).length;
-
-  // Total progress: step1 + step2 answered questions
-  let progress =
-    step === 1
-      ? (orgFields / totalOrgFields) * 100
-      : (answeredQuestions / totalQuestions) * 100;
-
   return (
     <div className="dashboard">
       <h3>Assessment Overview</h3>
@@ -154,9 +146,7 @@ const AssessmentDashboard = ({
           <strong
             style={{
               color:
-                step === 2 && pillarIndex === index
-                  ? "#4f46e5"
-                  : "#333",
+                step === 2 && pillarIndex === index ? "#4f46e5" : "#333",
             }}
           >
             {section.pillar}
@@ -170,12 +160,6 @@ const AssessmentDashboard = ({
         {step === 2 && framework[pillarIndex].pillar}
         {step === 3 && "Results"}
       </div>
-
-      {/* PROGRESS BAR */}
-      <div className="progress-container">
-        <div className="progress-bar" style={{ width: `${progress}%` }} />
-      </div>
-      <div className="progress-label">{progress.toFixed(0)}% Completed</div>
     </div>
   );
 };
@@ -186,23 +170,34 @@ export default function App() {
   const [step, setStep] = useState(1);
   const [pillarIndex, setPillarIndex] = useState(0);
   const [responses, setResponses] = useState<Responses>({});
-  const [notes, setNotes] = useState<Record<Pillar, string>>({
-    Strategy: "",
-    Capacity: "",
-    Discipline: "",
-    Performance: "",
-  });
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     Organisation: "",
     Email: "",
     ExperienceYears: "",
-    Innovation: "",
-    EmployeesNo: "",
+    NumberofEmployees: "",
     Location: "",
     Notes: "",
   });
+
+  /* -------- PROGRESS CALCULATION -------- */
+
+  const totalQuestions = framework.reduce(
+    (acc, section) => acc + section.questions.length,
+    0
+  );
+
+  const answeredQuestions = Object.keys(responses).length;
+  const orgFields = Object.values(form).filter((v) => v.trim() !== "").length;
+  const totalOrgFields = Object.keys(form).length;
+
+  const progress =
+    step === 1
+      ? (orgFields / totalOrgFields) * 100
+      : step === 2
+      ? (answeredQuestions / totalQuestions) * 100
+      : 100;
 
   const validateStep1 = () => {
     if (Object.values(form).some((v) => v.trim() === "")) {
@@ -219,28 +214,45 @@ export default function App() {
 
   const calculateScores = (): Scores => {
     const scores = {} as Scores;
+
     framework.forEach((section) => {
-      const values = section.questions.map(
-        (_, i) => responses[`${section.pillar}-${i}`] ?? 0
-      );
+      const answeredValues = section.questions
+        .map((_, i) => responses[`${section.pillar}-${i}`]?.current)
+        .filter((v): v is number => v !== undefined);
+
       scores[section.pillar] =
-        values.reduce((a, b) => a + b, 0) / values.length;
+        answeredValues.length === 0
+          ? 0
+          : answeredValues.reduce((a, b) => a + b, 0) /
+            answeredValues.length;
     });
+
     return scores;
   };
 
   const scores = calculateScores();
   const currentSection = framework[pillarIndex];
 
+  /* ✅ VALIDATION FUNCTION (ADDED) */
+  const isCurrentPillarComplete = (): boolean => {
+    return currentSection.questions.every((_, i) => {
+      const answer = responses[`${currentSection.pillar}-${i}`];
+      return answer?.current !== undefined && answer?.desired !== undefined;
+    });
+  };
+
   return (
     <div className="app-container">
+      <div className="progress-top">
+        <div className="progress-title">Progress</div>
+        <div className="progress-container">
+          <div className="progress-bar" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="progress-label">{progress.toFixed(0)}% Completed</div>
+      </div>
+
       <div className="layout">
-        <AssessmentDashboard
-          step={step}
-          pillarIndex={pillarIndex}
-          responses={responses}
-          form={form}
-        />
+        <AssessmentDashboard step={step} pillarIndex={pillarIndex} form={form} />
 
         <div className="card">
           <h1 className="title">Innovation Assessment Survey</h1>
@@ -280,42 +292,62 @@ export default function App() {
             <>
               <h2>{currentSection.pillar} Assessment</h2>
 
-              {/* USER EDITABLE NOTES */}
-              <div className="info-note">
-                <label className="note-label">Notes (optional)</label>
-                <textarea
-                  className="note-textarea"
-                  placeholder={`Add your notes for ${currentSection.pillar}...`}
-                  value={notes[currentSection.pillar]}
-                  onChange={(e) =>
-                    setNotes({
-                      ...notes,
-                      [currentSection.pillar]: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
               <div className="section-box">
                 {currentSection.questions.map((q, i) => (
                   <div key={i} className="question">
-                    <p>{q}</p>
+                    <p>
+                      <strong>{i + 1}. </strong>
+                      {q}
+                    </p>
+
+                    <p className="state-label">Current State</p>
                     <div className="radio-group">
                       {options.map((opt) => (
                         <label key={opt.value} className="radio-option">
                           <input
                             type="radio"
-                            name={`${currentSection.pillar}-${i}`}
+                            name={`current-${currentSection.pillar}-${i}`}
                             checked={
-                              responses[
-                                `${currentSection.pillar}-${i}`
-                              ] === opt.value
+                              responses[`${currentSection.pillar}-${i}`]
+                                ?.current === opt.value
                             }
                             onChange={() =>
                               setResponses({
                                 ...responses,
-                                [`${currentSection.pillar}-${i}`]:
-                                  opt.value,
+                                [`${currentSection.pillar}-${i}`]: {
+                                  ...responses[
+                                    `${currentSection.pillar}-${i}`
+                                  ],
+                                  current: opt.value,
+                                },
+                              })
+                            }
+                          />
+                          {opt.label}
+                        </label>
+                      ))}
+                    </div>
+
+                    <p className="state-label">Desired State</p>
+                    <div className="radio-group">
+                      {options.map((opt) => (
+                        <label key={opt.value} className="radio-option">
+                          <input
+                            type="radio"
+                            name={`desired-${currentSection.pillar}-${i}`}
+                            checked={
+                              responses[`${currentSection.pillar}-${i}`]
+                                ?.desired === opt.value
+                            }
+                            onChange={() =>
+                              setResponses({
+                                ...responses,
+                                [`${currentSection.pillar}-${i}`]: {
+                                  ...responses[
+                                    `${currentSection.pillar}-${i}`
+                                  ],
+                                  desired: opt.value,
+                                },
                               })
                             }
                           />
@@ -327,63 +359,60 @@ export default function App() {
                 ))}
               </div>
 
-              <div style={{ display: "flex", gap: "12px" }}>
-                {pillarIndex > 0 && (
-                  <button
-                    className="secondary-btn"
-                    onClick={() => setPillarIndex(pillarIndex - 1)}
-                  >
-                    Previous
-                  </button>
-                )}
-                {pillarIndex < framework.length - 1 ? (
-                  <button
-                    className="primary-btn"
-                    onClick={() => setPillarIndex(pillarIndex + 1)}
-                  >
-                    Next
-                  </button>
-                ) : (
-                  <button
-                    className="primary-btn"
-                    onClick={() => setStep(3)}
-                  >
-                    View Results
-                  </button>
-                )}
-              </div>
+              {!isCurrentPillarComplete() && (
+                <p className="error-text">
+                  Please answer all questions (Current and Desired) before
+                  continuing.
+                </p>
+              )}
+
+              <button
+                className="primary-btn"
+                disabled={!isCurrentPillarComplete()}
+                onClick={() =>
+                  pillarIndex < framework.length - 1
+                    ? setPillarIndex(pillarIndex + 1)
+                    : setStep(3)
+                }
+              >
+                {pillarIndex < framework.length - 1
+                  ? "Next"
+                  : "View Results"}
+              </button>
             </>
           )}
 
           {/* STEP 3 */}
           {step === 3 && (
             <>
-              <h2>Results</h2>
-              {Object.entries(scores).map(([pillar, score]) => (
-                <div key={pillar} className="section-box">
-                  <h3>
-                    {pillar} — {score.toFixed(1)} ({getMaturityLevel(score)})
-                  </h3>
-                  <p>{getRecommendation(pillar as Pillar, score)}</p>
-                  {notes[pillar as Pillar] && (
-                    <div className="info-note">
-                      <strong>Your Notes:</strong>
-                      <p>{notes[pillar as Pillar]}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
+              <h2>Innovation Assessment Results</h2>
+
+              <div className="section-box">
+                <h3>Overall Innovation Profile</h3>
+                <InnovationGapGraph
+                    responses={responses}
+                    framework={framework} />
+              </div>
+
+              <div className="pillar-cards-container">
+                {Object.entries(scores).map(([pillar, score]) => (
+                  <PillarCard
+                    key={pillar}
+                    pillar={pillar as Pillar}
+                    score={score}
+                    maturity={getMaturityLevel(score)}
+                    recommendation={getRecommendation(
+                      pillar as Pillar,
+                      score
+                    )}
+                  />
+                ))}
+              </div>
 
               <button
                 className="secondary-btn"
                 onClick={() => {
                   setResponses({});
-                  setNotes({
-                    Strategy: "",
-                    Capacity: "",
-                    Discipline: "",
-                    Performance: "",
-                  });
                   setPillarIndex(0);
                   setStep(1);
                 }}
