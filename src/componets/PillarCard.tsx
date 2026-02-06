@@ -1,17 +1,12 @@
 type Props = {
   pillar: string;
   score: number;
-  maturity:string;
-  recommendation:string;
+  maturity: string;
+  recommendation: string;
 };
 
-export default function PillarCard({ pillar, score,maturity }: Props) {
-  const level =
-    score <= 3 ? "Early Stage" :
-    score <= 6 ? "Developing" :
-    score <= 8 ? "Advanced" :
-    "Leading";
-
+export default function PillarCard({ pillar, score, maturity, recommendation }: Props) {
+  // Logic for the border and text color
   const color =
     score <= 3 ? "#dc2626" :
     score <= 6 ? "#f59e0b" :
@@ -26,11 +21,20 @@ export default function PillarCard({ pillar, score,maturity }: Props) {
         borderRadius: "12px",
         padding: "16px",
         textAlign: "center",
+        backgroundColor: "#fff",
+        height: "100%"
       }}
     >
-      <h3>{pillar}</h3>
-      <h1 style={{ color }}>{score.toFixed(1)}</h1>
-      <p>{maturity}</p>
+      <h3 style={{ margin: "0 0 8px 0", color: "#333" }}>{pillar}</h3>
+      <h1 style={{ color, fontSize: "2.5rem", margin: "10px 0" }}>
+        {score.toFixed(1)}
+      </h1>
+      <p style={{ fontWeight: "bold", textTransform: "uppercase", fontSize: "0.85rem" }}>
+        {maturity}
+      </p>
+      <p style={{ fontSize: "0.9rem", color: "#666", marginTop: "12px", lineHeight: "1.4" }}>
+        {recommendation}
+      </p>
     </div>
   );
 }
