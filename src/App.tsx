@@ -199,18 +199,28 @@ export default function App() {
       ? (answeredQuestions / totalQuestions) * 100
       : 100;
 
-  const validateStep1 = () => {
-    if (Object.values(form).some((v) => v.trim() === "")) {
-      setError("All fields are required.");
-      return false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.Email)) {
-      setError("Please enter a valid email address.");
-      return false;
-    }
-    setError("");
-    return true;
-  };
+     /* -------- UPDATED VALIDATION -------- */
+const validateStep1 = () => {
+  // Check all fields EXCEPT Notes
+  const requiredFields = Object.keys(form).filter(key => key !== "Notes");
+  
+  const hasEmptyRequiredFields = requiredFields.some(
+    (key) => form[key as keyof typeof form].trim() === ""
+  );
+
+  if (hasEmptyRequiredFields) {
+    setError("Please fill in all required fields.");
+    return false;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.Email)) {
+    setError("Please enter a valid email address.");
+    return false;
+  }
+
+  setError("");
+  return true;
+};
 
   const calculateScores = (): Scores => {
     const scores = {} as Scores;
@@ -288,99 +298,111 @@ export default function App() {
           )}
 
           {/* STEP 2 */}
-          {step === 2 && (
-            <>
-              <h2>{currentSection.pillar} Assessment</h2>
+{step === 2 && (
+  <>
+    <h2>{currentSection.pillar} Assessment</h2>
 
-              <div className="section-box">
-                {currentSection.questions.map((q, i) => (
-                  <div key={i} className="question">
-                    <p>
-                      <strong>{i + 1}. </strong>
-                      {q}
-                    </p>
+    {/* Editable Notes Section */}
+    <div className="notes-display-box">
+      <strong>Assessment Notes (applies to all pillars):</strong>
 
-                    <p className="state-label">Current State</p>
-                    <div className="radio-group">
-                      {options.map((opt) => (
-                        <label key={opt.value} className="radio-option">
-                          <input
-                            type="radio"
-                            name={`current-${currentSection.pillar}-${i}`}
-                            checked={
-                              responses[`${currentSection.pillar}-${i}`]
-                                ?.current === opt.value
-                            }
-                            onChange={() =>
-                              setResponses({
-                                ...responses,
-                                [`${currentSection.pillar}-${i}`]: {
-                                  ...responses[
-                                    `${currentSection.pillar}-${i}`
-                                  ],
-                                  current: opt.value,
-                                },
-                              })
-                            }
-                          />
-                          {opt.label}
-                        </label>
-                      ))}
-                    </div>
+      <textarea
+        className="notes-textarea"
+        placeholder="Add any notes or context for this assessment..."
+        value={form.Notes}
+        onChange={(e) =>
+          setForm({
+            ...form,
+            Notes: e.target.value,
+          })
+        }
+        rows={4}
+      />
+    </div>
 
-                    <p className="state-label">Desired State</p>
-                    <div className="radio-group">
-                      {options.map((opt) => (
-                        <label key={opt.value} className="radio-option">
-                          <input
-                            type="radio"
-                            name={`desired-${currentSection.pillar}-${i}`}
-                            checked={
-                              responses[`${currentSection.pillar}-${i}`]
-                                ?.desired === opt.value
-                            }
-                            onChange={() =>
-                              setResponses({
-                                ...responses,
-                                [`${currentSection.pillar}-${i}`]: {
-                                  ...responses[
-                                    `${currentSection.pillar}-${i}`
-                                  ],
-                                  desired: opt.value,
-                                },
-                              })
-                            }
-                          />
-                          {opt.label}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+    <div className="section-box">
+      {currentSection.questions.map((q, i) => (
+        <div key={i} className="question">
+          <p>
+            <strong>{i + 1}. </strong>
+            {q}
+          </p>
 
-              {!isCurrentPillarComplete() && (
-                <p className="error-text">
-                  Please answer all questions (Current and Desired) before
-                  continuing.
-                </p>
-              )}
+          <p className="state-label">Current State</p>
+          <div className="radio-group">
+            {options.map((opt) => (
+              <label key={opt.value} className="radio-option">
+                <input
+                  type="radio"
+                  name={`current-${currentSection.pillar}-${i}`}
+                  checked={
+                    responses[`${currentSection.pillar}-${i}`]?.current ===
+                    opt.value
+                  }
+                  onChange={() =>
+                    setResponses({
+                      ...responses,
+                      [`${currentSection.pillar}-${i}`]: {
+                        ...responses[`${currentSection.pillar}-${i}`],
+                        current: opt.value,
+                      },
+                    })
+                  }
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
 
-              <button
-                className="primary-btn"
-                disabled={!isCurrentPillarComplete()}
-                onClick={() =>
-                  pillarIndex < framework.length - 1
-                    ? setPillarIndex(pillarIndex + 1)
-                    : setStep(3)
-                }
-              >
-                {pillarIndex < framework.length - 1
-                  ? "Next"
-                  : "View Results"}
-              </button>
-            </>
-          )}
+          <p className="state-label">Desired State</p>
+          <div className="radio-group">
+            {options.map((opt) => (
+              <label key={opt.value} className="radio-option">
+                <input
+                  type="radio"
+                  name={`desired-${currentSection.pillar}-${i}`}
+                  checked={
+                    responses[`${currentSection.pillar}-${i}`]?.desired ===
+                    opt.value
+                  }
+                  onChange={() =>
+                    setResponses({
+                      ...responses,
+                      [`${currentSection.pillar}-${i}`]: {
+                        ...responses[`${currentSection.pillar}-${i}`],
+                        desired: opt.value,
+                      },
+                    })
+                  }
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {!isCurrentPillarComplete() && (
+      <p className="error-text">
+        Please answer all questions (Current and Desired) before continuing.
+      </p>
+    )}
+
+    <button
+      className="primary-btn"
+      disabled={!isCurrentPillarComplete()}
+      onClick={() =>
+        pillarIndex < framework.length - 1
+          ? setPillarIndex(pillarIndex + 1)
+          : setStep(3)
+      }
+    >
+      {pillarIndex < framework.length - 1 ? "Next" : "View Results"}
+    </button>
+  </>
+)}
+
 
           {/* STEP 3 */}
           {step === 3 && (
